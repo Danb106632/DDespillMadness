@@ -2,6 +2,7 @@ x64/
 D_DespillMadness.dir/
 CMakeFiles/
 .git/
+.vs/
 
 /ZERO_CHECK.vcxproj.filters
 /ZERO_CHECK.vcxproj
