@@ -3,6 +3,7 @@ D_DespillMadness.dir/
 CMakeFiles/
 .git/
 .vs/
+.vscode/
 
 /ZERO_CHECK.vcxproj.filters
 /ZERO_CHECK.vcxproj

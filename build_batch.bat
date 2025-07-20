@@ -34,3 +34,5 @@ for %%V in (%VERSIONS%) do (
 
 echo.
 echo ✅ All builds completed.
+
+call "C:\Program Files\Nuke16.0v3\Nuke16.0.exe" --nukex

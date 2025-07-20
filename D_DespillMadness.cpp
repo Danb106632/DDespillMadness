@@ -7,6 +7,7 @@ static const char* const CLASS = "D_DespillMadness";
 // Includes, in this case we need the NoIop class to inherit from it.
 #include "DDImage/NoIop.h"
 #include "DDImage/Knobs.h"
+#include "DDImage/Channel.h"
  
 // Namespace. In this case we don't need it, but it's usually convenient to have.
 using namespace DD::Image;
@@ -38,7 +39,7 @@ public:
         fineTuneKnob = 0.94f;
         restoreSourceLuminanceKnob = true;
         outputSpillMatteKnob = false;
-        //maskChannel = Chan_Alpha;
+        maskChannel = Chan_Black;
         invertMask = false;
         mix = 1.0f;
 
@@ -54,7 +55,8 @@ public:
     {
         switch (n) {
         case 0: return "img";
-        default: return "mask";
+        case 1: return "mask";
+        default: return 0;
         }
     }
     
@@ -68,20 +70,28 @@ public:
         Enumeration_knob(f, &screenTypeKnobKnob, screenTypeKnobNames, "screenType", "screen type");
         Enumeration_knob(f, &despillAlgorithmKnobKnob, despillAlgorithmKnobNames, "algorithm", "despill algorithm");
         Float_knob(f, &fineTuneKnob, IRange(0.5f, 1.5f), "LimitPercentage", "fine tune");
+
         Divider(f, "");
+        
         Text_knob(f, "spill area correction"); SetFlags(f, Knob::STARTLINE);
         Text_knob(f, " "); SetFlags(f, Knob::STARTLINE); Spacer(f, 250);
-        Bool_knob(f, &restoreSourceLuminanceKnob, "restore source luminance"); Tooltip(f, "Restores luminance of the original image"); SetFlags(f, Knob::STARTLINE);
+
+        Bool_knob(f, &restoreSourceLuminanceKnob, "sourceLuma", "restore source luminance"); Tooltip(f, "Restores luminance of the original image"); SetFlags(f, Knob::STARTLINE);
+        
         AColor_knob(f, saturationKnob, IRange(0.f, 4), "saturation", "saturation");
         AColor_knob(f, gammaKnob, IRange(0.2f, 5), "gamma", "gamma");
         AColor_knob(f, offsetKnob, IRange(-1, 1), "offset", "offset");
+
         Divider(f, "");
-        Bool_knob(f, &outputSpillMatteKnob, "output spill matte in alpha"); SetFlags(f, Knob::STARTLINE);
+
+        Bool_knob(f, &outputSpillMatteKnob, "spillMatteOut", "output spill matte in alpha"); 
+        SetFlags(f, Knob::STARTLINE);
+
         Divider(f, "");
-        Input_Channel_knob(f, &maskChannel, 1, 2, "maskChannel", "mask channel");
+
+        Input_Channel_knob(f, &maskChannel, 1, 1, "maskChannel", "mask channel");
         Bool_knob(f, &invertMask, "invertMask", "invert");
         Float_knob(f, &mix, "mix");
-
     }
 
     const char* Class() const override { return CLASS; }
