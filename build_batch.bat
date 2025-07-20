@@ -19,17 +19,17 @@ for %%V in (%VERSIONS%) do (
     echo === Building with Nuke version %%V ===
     echo Path: !NUKEVERISON!
 
-    set "build_dir=D:\NDK\D_DespillMadness\%%V"
+    set "build_dir=D:\NDK\DDespillMadness\%%V"
 
-    del "D:\NDK\D_DespillMadness\CMakeCache.txt" > nul 2>&1
+    del "D:\NDK\DDespillMadness\CMakeCache.txt" > nul 2>&1
 
-    cmake -DCMAKE_PREFIX_PATH="!NUKEVERISON!" -A x64 -S "D:\NDK\D_DespillMadness" -B "D:\NDK\D_DespillMadness"
+    cmake -DCMAKE_PREFIX_PATH="!NUKEVERISON!" -A x64 -S "D:\NDK\DDespillMadness" -B "D:\NDK\DDespillMadness"
     cmake --build . --config Release
 
-    mkdir ""D:\NDK\D_DespillMadness\Release\%%V\"
-    move "D:\NDK\D_DespillMadness\Release\D_DespillMadness.dll" "D:\NDK\D_DespillMadness\Release\%%V\D_DespillMadness.dll"
+    mkdir ""D:\NDK\DDespillMadness\Release\%%V\"
+    move "D:\NDK\DDespillMadness\Release\DDespillMadness.dll" "D:\NDK\DDespillMadness\Release\%%V\DDespillMadness.dll"
 
-    mkdir "C:\Users\danie\.nuke\D_DespillMadness\%%V" 2>nul & copy /Y "D:\NDK\D_DespillMadness\Release\%%V\D_DespillMadness.dll" "C:\Users\danie\.nuke\D_DespillMadness\%%V\D_DespillMadness.dll"
+    mkdir "C:\Users\danie\.nuke\DDespillMadness\%%V" 2>nul & copy /Y "D:\NDK\DDespillMadness\Release\%%V\DDespillMadness.dll" "C:\Users\danie\.nuke\DDespillMadness\%%V\DDespillMadness.dll"
 )
 
 echo.

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10 FATAL_ERROR)
-project(D_DespillMadness)
+project(DDespillMadness)
 
 set(CMAKE_MODULE_PATH "CMake;${CMAKE_MODULE_PATH}")
 set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
@@ -39,4 +39,4 @@ function(add_example_plugin PLUGIN_NAME)
     target_compile_definitions(${PLUGIN_NAME} PRIVATE FN_EXAMPLE_PLUGIN)
 endfunction()
 
-add_example_plugin(D_DespillMadness D_DespillMadness.cpp)
+add_example_plugin(DDespillMadness DDespillMadness.cpp)

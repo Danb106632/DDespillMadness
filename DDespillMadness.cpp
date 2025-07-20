@@ -1,12 +1,13 @@
-// D_DespillMadness.cpp
+// DDespillMadness.cpp
 // Minimum boilerplate code required to create a Nuke Op/Plugin
  
 // A string to define your class name.
-static const char* const CLASS = "D_DespillMadness";
+static const char* const CLASS = "DDespillMadness";
  
 // Includes, in this case we need the NoIop class to inherit from it.
 #include "DDImage/NoIop.h"
 #include "DDImage/Knobs.h"
+#include "DDImage/Row.h"
 #include "DDImage/Channel.h"
  
 // Namespace. In this case we don't need it, but it's usually convenient to have.
@@ -16,7 +17,7 @@ static const char* const screenTypeKnobNames[]  = { "green", "blue", 0 };
 static const char* const despillAlgorithmKnobNames[]  = { "average", "double green/blue average", "double red average", "red limit", "green/blue average", 0 };
  
 // Our class: MyNoOp, inheriting from NoIop.
-class D_DespillMadness : public NoIop
+class DDespillMadness : public NoIop
 {
     int screenTypeKnobKnob;
     int despillAlgorithmKnobKnob;
@@ -31,7 +32,7 @@ class D_DespillMadness : public NoIop
     float mix;
 
 public:
-    D_DespillMadness(Node* node) : NoIop(node)
+    DDespillMadness(Node* node) : NoIop(node)
     {
         inputs(2);
         screenTypeKnobKnob = 0;
@@ -60,12 +61,39 @@ public:
         }
     }
     
-    void D_DespillMadness::_validate(bool for_real) override
+    void DDespillMadness::_validate(bool for_real) override
     {
-        NoIop::_validate(for_real);
+        copy_info();
+
+        ChannelSet outChannels = channels();
+
+        outChannels &= Mask_RGB;
+
+        if(!restoreSourceLuminanceKnob)
+        {
+            if(screenTypeKnobKnob == 0) // green
+            {
+                outChannels &= Mask_Green;
+            }
+            else // blue
+            {
+                outChannels &= Mask_Blue;
+            }
+
+        }
+        
+        if(outputSpillMatteKnob)
+        {
+            outChannels += Chan_Alpha;
+        }
+
+        set_out_channels(outChannels);
+        info_.turn_on(outChannels);
+
+        Iop::_validate(for_real);
     }
 
-    void D_DespillMadness::knobs(Knob_Callback f) override
+    void DDespillMadness::knobs(Knob_Callback f) override
     {
         Enumeration_knob(f, &screenTypeKnobKnob, screenTypeKnobNames, "screenType", "screen type");
         Enumeration_knob(f, &despillAlgorithmKnobKnob, despillAlgorithmKnobNames, "algorithm", "despill algorithm");
@@ -100,5 +128,5 @@ public:
     static const Description d;
 };
  
-static Iop* build(Node* node) { return new D_DespillMadness(node); }
-const Iop::Description D_DespillMadness::d(CLASS, nullptr, build);
+static Iop* build(Node* node) { return new DDespillMadness(node); }
+const Iop::Description DDespillMadness::d(CLASS, nullptr, build);

@@ -1,5 +1,5 @@
 x64/
-D_DespillMadness.dir/
+DDespillMadness.dir/
 CMakeFiles/
 .git/
 .vs/
@@ -15,8 +15,8 @@ CMakeFiles/
 
 /ALL_BUILD.vcxproj.filters
 /ALL_BUILD.vcxproj
-/D_DespillMadness.sln 
-/D_DespillMadness.vcxproj 
-/D_DespillMadness.vcxproj.filters
+/DDespillMadness.sln 
+/DDespillMadness.vcxproj 
+/DDespillMadness.vcxproj.filters
 
-!D_DespillMadness.cpp
+!DDespillMadness.cpp
