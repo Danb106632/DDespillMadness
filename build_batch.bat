@@ -26,6 +26,11 @@ for %%V in (%VERSIONS%) do (
     cmake -DCMAKE_PREFIX_PATH="!NUKEVERISON!" -A x64 -S "D:\NDK\DDespillMadness" -B "D:\NDK\DDespillMadness"
     cmake --build . --config Release
 
+    if %ERRORLEVEL% NEQ 0 (
+    	echo Build failed. Aborting.
+    	exit /b %ERRORLEVEL%
+    )
+
     mkdir ""D:\NDK\DDespillMadness\Release\%%V\"
     move "D:\NDK\DDespillMadness\Release\DDespillMadness.dll" "D:\NDK\DDespillMadness\Release\%%V\DDespillMadness.dll"
 
