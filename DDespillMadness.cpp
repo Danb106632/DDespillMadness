@@ -6,6 +6,7 @@ static const char* const CLASS = "DDespillMadness";
 #include "DDImage/Knobs.h"
 #include "DDImage/Row.h"
 #include "DDImage/Channel.h"
+#include "DDImage/DDMath.h"
  
 // Namespace. In this case we don't need it, but it's usually convenient to have.
 using namespace DD::Image;
@@ -23,15 +24,13 @@ class DDespillMadness : public PixelIop
     float gammaKnob[4];
     float offsetKnob[4];
     bool outputSpillMatteKnob;
-    Channel maskChannel;
-    bool invertMask;
-    float mix;
+
+    float saturationWeights[3] = { 0.2126f, 0.7152f, 0.0722f };
 
 public:
 
     DDespillMadness(Node* node) : PixelIop(node)
     {
-        inputs(2);
         screenTypeKnob = 0;
         despillAlgorithmKnob = 0;
         fineTuneKnob = 0.94f;
@@ -40,8 +39,7 @@ public:
 
         for (int i=0; i<4; i++) 
         {
-            saturationKnob[i] = 1.0f;
-            gammaKnob[i] = 1.0f;
+            saturationKnob[i] = gammaKnob[i] = 1.0f;
             offsetKnob[i] = 0.0f;
         }
  
@@ -51,7 +49,6 @@ public:
     {
         switch (n) {
         case 0: return "img";
-        case 1: return "mask";
         default: return 0;
         }
     }
@@ -84,16 +81,11 @@ public:
         Divider(f, "");
     }
 
-    void in_channels(int input_number, ChannelSet& channels) const override
-    {
-        channels &= Mask_RGB;
-    }
-
     void _validate(bool for_real) override
     {
         copy_info();
 
-        ChannelSet outChannels = channels();
+        ChannelSet outChannels = info_.channels();
         
         if(!restoreSourceLuminanceKnob)
         {
@@ -132,110 +124,136 @@ public:
         float* bOut = out.writable(Chan_Blue) + x;
         float* aOut = out.writable(Chan_Alpha) + x;
 
+        // Temporary variables to hold the output values
+        // These will be modified based on the screen type, algorithm, saturation, gamma, and offset knobs
+        // and then written to the output buffers.
+
+        float RGBAOutVal[4];
+
         // Pointer to when the loop is done:
         const float* END = rIn + (r - x);
 
         // Start the loop:
         while (rIn < END) {
 
-            float rVal = *rIn++;
-            float gVal = *gIn++;
-            float bVal = *bIn++;
+            float RGBexpression;
+            float Aexpression;
+
 
             // Temporary variables to hold the output values
             // These will be modified based on the screen type, algorithm, saturation, gamma, and offset knobs
             // and then written to the output buffers.
-            float rOutVal = rVal;
-            float gOutVal = gVal;
-            float bOutVal = bVal;
-            float aOutVal = 0.0f;
+            float RGBAOutVal[4] = { *rIn++, *gIn++, *bIn++, 0.0f };
+
+
+            if(screenTypeKnob == 0) // Green screen
+            {
+                switch (despillAlgorithmKnob)
+                {
+                    case 0: 
+                        RGBexpression = (RGBAOutVal[1] > (RGBAOutVal[2]+RGBAOutVal[0]) / 2 * fineTuneKnob) ? ((RGBAOutVal[2]+RGBAOutVal[0])/2*fineTuneKnob) :RGBAOutVal[1];
+                        Aexpression = RGBAOutVal[1] - (RGBAOutVal[0]+RGBAOutVal[2]) * fineTuneKnob / 2;
+                        break;
+                    case 1: 
+                        RGBexpression = (RGBAOutVal[1] > (2*RGBAOutVal[2]+RGBAOutVal[0]) / 3 * fineTuneKnob) ? ((2*RGBAOutVal[2]+RGBAOutVal[0])/3*fineTuneKnob) :RGBAOutVal[1];
+                        Aexpression = RGBAOutVal[1] - (RGBAOutVal[0]+RGBAOutVal[2]) * fineTuneKnob / 2;
+                        break;
+                    case 2: 
+                        RGBexpression = (RGBAOutVal[1] > (RGBAOutVal[2]+2*RGBAOutVal[0]) / 3 * fineTuneKnob) ? ((RGBAOutVal[2]+2*RGBAOutVal[0]) / 3 * fineTuneKnob) :RGBAOutVal[1];
+                        Aexpression = RGBAOutVal[1] - (RGBAOutVal[0]+RGBAOutVal[2]) * fineTuneKnob / 2;
+                        break;
+                    case 3: 
+                        RGBexpression = (RGBAOutVal[1] > RGBAOutVal[0] * fineTuneKnob) ? (RGBAOutVal[0] * fineTuneKnob) : RGBAOutVal[1];
+                        Aexpression = RGBAOutVal[1] - RGBAOutVal[0] * fineTuneKnob;
+                        break;
+                    case 4: 
+                        RGBexpression = (RGBAOutVal[1] > RGBAOutVal[2] * fineTuneKnob) ? (RGBAOutVal[2] * fineTuneKnob) : RGBAOutVal[1];
+                        Aexpression = RGBAOutVal[1] - RGBAOutVal[2] * fineTuneKnob;
+                        break;
+
+                    default:
+                        RGBexpression = (RGBAOutVal[1] > (RGBAOutVal[2]+RGBAOutVal[0]) / 2 * fineTuneKnob) ? ((RGBAOutVal[2]+RGBAOutVal[0])/2*fineTuneKnob) :RGBAOutVal[1];
+                        Aexpression = RGBAOutVal[1] - (RGBAOutVal[0]+RGBAOutVal[2]) * fineTuneKnob / 2;
+                        break;
+                }
+
+                RGBAOutVal[1] = RGBexpression;
+                RGBAOutVal[3] = Aexpression;
+
+            }
+            else // Blue screen
+            {
+                switch (despillAlgorithmKnob)
+                {
+                    case 0: 
+                        RGBexpression = (RGBAOutVal[2] > (RGBAOutVal[1]+RGBAOutVal[0]) / 2 * fineTuneKnob) ? ((RGBAOutVal[1]+RGBAOutVal[0])/2*fineTuneKnob) :RGBAOutVal[2];
+                        Aexpression = RGBAOutVal[2] - (RGBAOutVal[0]+RGBAOutVal[1]) * fineTuneKnob / 2;
+                        break;
+                    case 1: 
+                        RGBexpression = (RGBAOutVal[2] > (2*RGBAOutVal[1]+RGBAOutVal[0]) / 2 * fineTuneKnob) ? ((2*RGBAOutVal[1]+RGBAOutVal[0]) / 2 * fineTuneKnob) :RGBAOutVal[2];
+                        Aexpression = RGBAOutVal[2] - (RGBAOutVal[0]+2*RGBAOutVal[1]) * fineTuneKnob / 2;
+                        break;
+                    case 2: 
+                        RGBexpression = (RGBAOutVal[2] > (RGBAOutVal[1]+2*RGBAOutVal[0]) / 2 * fineTuneKnob) ? ((RGBAOutVal[1]+2*RGBAOutVal[0]) / 2 * fineTuneKnob) :RGBAOutVal[2];
+                        Aexpression = RGBAOutVal[2] - (2*RGBAOutVal[0]+RGBAOutVal[1]) * fineTuneKnob / 2;
+                        break;
+                    case 3: 
+                        RGBexpression = (RGBAOutVal[2] > RGBAOutVal[0] * fineTuneKnob) ? (RGBAOutVal[0] * fineTuneKnob) : RGBAOutVal[2];
+                        Aexpression = RGBAOutVal[2] - RGBAOutVal[0] * fineTuneKnob;
+                        break;
+                    case 4: 
+                        RGBexpression = (RGBAOutVal[2] > RGBAOutVal[1] * fineTuneKnob) ? (RGBAOutVal[1] * fineTuneKnob) : RGBAOutVal[2];
+                        Aexpression = RGBAOutVal[2] - RGBAOutVal[1] * fineTuneKnob;
+                        break;
+
+                    default:
+                        RGBexpression = (RGBAOutVal[2] > RGBAOutVal[0] * fineTuneKnob) ? (RGBAOutVal[0] * fineTuneKnob) : RGBAOutVal[2];
+                        Aexpression = RGBAOutVal[2] - RGBAOutVal[0] * fineTuneKnob;
+                        break;
+                }
+
+                RGBAOutVal[2] = RGBexpression;
+                RGBAOutVal[3] = Aexpression;
+
+            }
+
+            RGBAOutVal[3] = clamp(RGBAOutVal[3], 0.0f, 1.0f);
+
+            // Compute luminance with Rec.709 weights
+            float luma = 0.2126f * RGBAOutVal[0] +
+                        0.7152f * RGBAOutVal[1] +
+                        0.0722f * RGBAOutVal[2];
+
+            for (int i = 0; i < 3; ++i)
+            {
+                float original = RGBAOutVal[i];
+
+                // Saturation
+                float grade = luma + (original - luma) * saturationKnob[i];
+
+                // Gamma (skip negatives)
+                if (gammaKnob[i] > 0.0f && grade >= 0.0f)
+                {
+                    grade = powf(grade, 1.0f / gammaKnob[i]);
+                }
+
+                // Offset
+                grade += offsetKnob[i];
+
+                // Mask blend (using spill matte)
+                grade = RGBAOutVal[3] * grade + (1.0f - RGBAOutVal[3]) * original;
+
+                RGBAOutVal[i] = grade;
+            }
             
-            float RGBexpression;
-            float Aexpression;
+            // Write the output values to the output buffers
+            *rOut++ = RGBAOutVal[0];
+            *gOut++ = RGBAOutVal[1];
+            *bOut++ = RGBAOutVal[2];
+            *aOut++ = RGBAOutVal[3];
 
-            if(screenTypeKnob == 0) // Green screen
-            {
-                switch (despillAlgorithmKnob)
-                {
-                    case 0: 
-                        RGBexpression = (gVal > (bVal+rVal) / 2 * fineTuneKnob) ? ((bVal+rVal)/2*fineTuneKnob) :gVal;
-                        Aexpression = gVal - (rVal+bVal) * fineTuneKnob / 2;
-                        break;
-                    case 1: 
-                        RGBexpression = (gVal > (2*bVal+rVal) / 3 * fineTuneKnob) ? ((2*bVal+rVal)/3*fineTuneKnob) :gVal;
-                        Aexpression = gVal - (rVal+bVal) * fineTuneKnob / 2;
-                        break;
-                    case 2: 
-                        RGBexpression = (gVal > (bVal+2*rVal) / 3 * fineTuneKnob) ? ((bVal+2*rVal) / 3 * fineTuneKnob) :gVal;
-                        Aexpression = gVal - (rVal+bVal) * fineTuneKnob / 2;
-                        break;
-                    case 3: 
-                        RGBexpression = (gVal > rVal * fineTuneKnob) ? (rVal * fineTuneKnob) : gVal;
-                        Aexpression = gVal - rVal * fineTuneKnob;
-                        break;
-                    case 4: 
-                        RGBexpression = (gVal > bVal * fineTuneKnob) ? (bVal * fineTuneKnob) : gVal;
-                        Aexpression = gVal - bVal * fineTuneKnob;
-                        break;
 
-                    default:
-                        RGBexpression = (gVal > (bVal+rVal) / 2 * fineTuneKnob) ? ((bVal+rVal)/2*fineTuneKnob) :gVal;
-                        Aexpression = gVal - (rVal+bVal) * fineTuneKnob / 2;
-                        break;
-                }
-
-            }
-            else // Blue screen
-            {
-                switch (despillAlgorithmKnob)
-                {
-                    case 0: 
-                        RGBexpression = (bVal > (gVal+rVal) / 2 * fineTuneKnob)?((gVal+rVal) / 2 * fineTuneKnob):bVal;
-                        Aexpression = bVal - (rVal+gVal) * fineTuneKnob / 2;
-                        break;
-                    case 1: 
-                        RGBexpression = (bVal > (2*gVal+rVal) / 2 * fineTuneKnob)?((2*gVal+rVal) / 2 * fineTuneKnob):bVal;
-                        Aexpression = bVal - (rVal+2*gVal) * fineTuneKnob / 2;
-                        break;
-                    case 2: 
-                        RGBexpression = (bVal > (gVal+2*rVal) / 2 * fineTuneKnob)?((gVal+2*rVal) / 2 * fineTuneKnob):bVal;
-                        Aexpression = bVal - (2*rVal+gVal) * fineTuneKnob / 2;
-                        break;
-                    case 3: 
-                        RGBexpression = (bVal > rVal * fineTuneKnob) ? (rVal * fineTuneKnob) : bVal;
-                        Aexpression = bVal - rVal * fineTuneKnob;
-                        break;
-                    case 4: 
-                        RGBexpression = (bVal > gVal * fineTuneKnob) ? (gVal * fineTuneKnob) : bVal;
-                        Aexpression = bVal - gVal * fineTuneKnob;
-                        break;
-
-                    default:
-                        RGBexpression = (bVal > rVal * fineTuneKnob) ? (rVal * fineTuneKnob) : bVal;
-                        Aexpression = bVal - rVal * fineTuneKnob;
-                        break;
-                }
-            }
-
-            if(screenTypeKnob == 0) // Green screen
-            {
-                rOutVal = rVal;
-                gOutVal = RGBexpression;
-                bOutVal = bVal;
-                aOutVal = Aexpression;
-            }
-            else // Blue screen
-            {
-                rOutVal = rVal;
-                gOutVal = gVal;
-                bOutVal = RGBexpression;
-                aOutVal = Aexpression;
-            }
-
-            *rOut++ = rOutVal;
-            *gOut++ = gOutVal;
-            *bOut++ = bOutVal;
-            *aOut++ = aOutVal;
+           
         }
     }
 
@@ -248,6 +266,9 @@ public:
 
 
 
-static Iop* build(Node* node) { return new NukeWrapper(new DDespillMadness(node)); }
+static Iop *build(Node *node)
+{
+  return (new NukeWrapper(new DDespillMadness(node)))->noChannels();
+}
 
 const Iop::Description DDespillMadness::d(CLASS, "Color/DDespillMadness", build);
