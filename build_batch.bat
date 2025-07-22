@@ -3,14 +3,14 @@ call "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build
 setlocal enabledelayedexpansion
 
 REM Define Nuke version to path mappings
-set "NUKE[14.0]=C:\Program Files\Nuke14.0v6"
 set "NUKE[14.1]=C:\Program Files\Nuke14.1v6"
 set "NUKE[15.2]=C:\Program Files\Nuke15.2v1"
 set "NUKE[16.0]=C:\Program Files\Nuke16.0v3"
+set "NUKE[13.2]=C:\Program Files\Nuke13.2v9"
 
 
 REM Define list of versions to loop through
-set "VERSIONS=14.0 14.1 15.2 16.0"
+set "VERSIONS=13.2 14.1 15.2 16.0"
 
 for %%V in (%VERSIONS%) do (
     set "NUKEVERISON=!NUKE[%%V]!"
